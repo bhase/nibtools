@@ -135,6 +135,9 @@ main(int argc, char *argv[])
 	mode = MODE_READ_DISK;
 	align_report = 0;
 
+    // no buffering for input
+    setvbuf(stdin, NULL, _IONBF, 0);
+
 	// cache our arguments for logfile generation
 	strcpy(argcache, "");
 	for (i = 0; i < argc; i++)
