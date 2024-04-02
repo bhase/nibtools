@@ -60,7 +60,7 @@ int align_delay;
 int align_report;
 int increase_sync = 0;
 int presync = 0;
-BYTE fillbyte = 0xfe;
+BYTE fillbyte = 0x55;
 BYTE drive = 8;
 char * cbm_adapter = "";
 int use_floppycode_srq = 0;
@@ -70,6 +70,7 @@ int sync_align_buffer=0;
 int fattrack=0;
 int old_g64=0;
 int backwards=0;
+int nb2cycle=0;
 
 BYTE density_map;
 float motor_speed;
@@ -92,8 +93,8 @@ main(int argc, char *argv[])
 	char argcache[256];
 
 	printf(
-		"\nnibread - Commodore 1541/1571 disk image nibbler\n"
-		AUTHOR VERSION "\n\n");
+		"nibread - Commodore 1541/1571 disk image nibbler\n"
+		AUTHOR VERSION "\n");
 
 	/* we can do nothing with no switches */
 	if (argc < 2)
@@ -125,7 +126,7 @@ main(int argc, char *argv[])
 	track_match = 0;
 	interactive_mode = 0;
     file_valid = 1;
-	verbose = 1;
+	verbose = 0;
 	extended_parallel_test = 0;
 	force_nosync = 0;
 	align = ALIGN_NONE;
@@ -211,8 +212,8 @@ main(int argc, char *argv[])
 			break;
 
 		case 'n':
-			force_nosync = 0;
-			printf("* Allowing track reads to wait for sync\n");
+			force_nosync = 1;
+			printf("* Allowing track reads to ignore sync\n");
 			break;
 
 		case 't':
@@ -248,6 +249,12 @@ main(int argc, char *argv[])
 			if (!(*argv)[2]) usage();
 			et = atof(&(*argv)[2])*2;
 			end_track = (int)et;
+			if((et/2)>41) printf("WARNING: Most drives won't reach past 41 tracks and your head carriage can physically JAM!\n");
+			if((et/2)>MAX_TRACKS_1541)
+			{
+				printf("WARNING: MAX tracks is %d\n",MAX_TRACKS_1541);
+				end_track=(MAX_TRACKS_1541*2);
+			}
 			printf("* End track set to %.1f (%d)\n", et/2, end_track);
 			break;
 
@@ -265,7 +272,7 @@ main(int argc, char *argv[])
 
 		case 'v':
 			verbose++;
-			printf("* Verbose mode on\n");
+			printf("* Verbose on level %d\n",verbose);
 			break;
 
 		case 'e':	// change read retries

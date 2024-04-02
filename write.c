@@ -123,12 +123,15 @@ void
 master_disk(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_length)
 {
 	int track, verified, retries, added_sync=0, addsyncloops;
-	size_t badgcr, length, verlen, verlen2;
+	size_t badgcr, badgcr2, length, verlen, verlen2;
 	BYTE verbuf1[NIB_TRACK_LENGTH], verbuf2[NIB_TRACK_LENGTH], verbuf3[NIB_TRACK_LENGTH], align;
-	size_t gcr_diff;
+	size_t gcr_match;
 	char errorstring[0x1000];
+	char fillbytesave;
 
 	//if(track_inc==1) unformat_disk(fd);
+
+	printf("Writing to disk");
 
 	for (track=backwards?end_track:start_track; backwards?(track>=start_track):(track<=end_track); backwards?(track-=track_inc):(track+=track_inc))
 	{
@@ -140,7 +143,7 @@ master_disk(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
 		if(track_density[track] & BM_FF_TRACK)
 		{
 				fill_track(fd, track, 0xFF);
-				if(verbose) printf("\n%4.1f: KILLED!",  (float) track / 2);
+				printf("\n%4.1f: KILLED!",  (float) track / 2);
 				continue;
 		}
 
@@ -150,28 +153,26 @@ master_disk(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
 				if(track_inc!=1)
 				{
 					fill_track(fd, track, 0x00);
-					if(verbose) printf("\n%4.1f: UNFORMATTED!",  (float) track / 2);
+					printf("\n%4.1f: UNFORMATTED!",  (float) track / 2);
 				}
 				continue;
 		}
 
 		/* user display */
-		if(verbose)
-		{
-			printf("\n%4.1f: (", (float)track/2);
-			printf("%d", track_density[track]&3);
-			if ((track_density[track]&3) != speed_map[track/2]) printf("!");
-			printf(":%d) ", track_length[track]);
-			if (track_density[track] & BM_NO_SYNC) printf("NOSYNC ");
-			if (track_density[track] & BM_FF_TRACK) printf("KILLER ");
-			printf("WRITE ");
-		}
+		printf("\n%4.1f: (", (float)track/2);
+		printf("%d", track_density[track]&3);
+		if ((track_density[track]&3) != speed_map[track/2]) printf("!");
+		printf(":%d) ", track_length[track]);
+		if (track_density[track] & BM_NO_SYNC) printf("NOSYNC ");
+		if (track_density[track] & BM_FF_TRACK) printf("KILLER ");
+		printf("WRITE  ");
 
 		/* loop last byte of track data for filler
 		   we do this before processing track in case we get wrong byte */
+		fillbytesave = fillbyte;
 		if(fillbyte == 0xfe)
 			fillbyte = track_buffer[(track * NIB_TRACK_LENGTH) + track_length[track] - 1];
-		if(verbose) printf("[fill:$%.2x]", fillbyte);
+		if(verbose) printf("[fill:$%x]", fillbyte);
 
 		if((increase_sync)&&(track_length[track])&&(!(track_density[track]&BM_NO_SYNC))&&(!(track_density[track]&BM_FF_TRACK)))
 		{
@@ -186,10 +187,13 @@ master_disk(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
 		badgcr = check_bad_gcr(track_buffer + (track * NIB_TRACK_LENGTH), track_length[track]);
 		if(verbose) printf("[weak:%d]", badgcr);
 
-		length = compress_halftrack(track, track_buffer + (track * NIB_TRACK_LENGTH),
-			track_density[track], track_length[track]);
+		//verbose+=1;
+		length = compress_halftrack(track, track_buffer + (track * NIB_TRACK_LENGTH), track_density[track], track_length[track]);
+		//verbose-=1;
 
 		master_track(fd, track_buffer, track_density, track, length);
+
+		fillbyte = fillbytesave;
 
 		if(track_match)	// Try to verify our write
 		{
@@ -216,47 +220,42 @@ master_disk(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
 
 				memset(verbuf2, 0, NIB_TRACK_LENGTH);
 				memset(verbuf3, 0, NIB_TRACK_LENGTH);
-				verlen   = extract_GCR_track(verbuf2, verbuf1, &align, track/2, track_length[track], track_length[track]);
+				verlen  = extract_GCR_track(verbuf2, verbuf1, &align, track/2, track_length[track], track_length[track]);
 				verlen2 = extract_GCR_track(verbuf3, track_buffer+(track * NIB_TRACK_LENGTH), &align, track/2, track_length[track], track_length[track]);
 
-				if(verbose) printf("\n      (%d:%d) VERIF", track_density[track]&3, verlen);
-				fprintf(fplog, "\n      (%d:%d) VERIF", track_density[track]&3, verlen);
+				printf("\n      (%d:%d) VERIFY ", track_density[track]&3, verlen);
+				fprintf(fplog, "\n      (%d:%d) VERIFY ", track_density[track]&3, verlen);
 
 				// Fix bad GCR in tracks for compare
 				badgcr = check_bad_gcr(verbuf2, track_length[track]);
 				if(verbose>1) printf("(badgcr=%.4d:", badgcr);
-				badgcr = check_bad_gcr(verbuf3, track_length[track]);
-				if(verbose>1) printf("%.4d)", badgcr);
+				badgcr2 = check_bad_gcr(verbuf3, track_length[track]);
+				if(verbose>1) printf("%.4d)", badgcr2);
 
 				// compare raw gcr data
-				gcr_diff = compare_tracks(verbuf3, verbuf2, verlen, verlen, 1, errorstring);
-				if(verbose) printf(" (diff:%.4d) ", (int)gcr_diff);
-				fprintf(fplog, " (diff:%.4d) ", (int)gcr_diff);
+				gcr_match = compare_tracks(verbuf3, verbuf2, verlen, verlen, 1, errorstring);
+				//printf(" (match:%.4d) ", (int)gcr_match);
+				fprintf(fplog, " (match:%.4d) ", (int)gcr_match);
 
-
-				if(gcr_diff <= (size_t)sector_map[track/2]+10)
+				if(gcr_match >= length-10)
 				{
-					printf("OK ");
-					verified=1;
-				}
-				else if(gcr_diff <= badgcr)
-				{
-					printf("WEAK OK");
+					printf("OK (%.4d/%.4d) ",gcr_match,length);
 					verified=1;
 				}
 				else
 				{
 					retries++;
-					printf("Retry %d ", retries);
+					printf("Retry %d (%.4d/%.4d) ",retries,gcr_match,length);
 					fill_track(fd, track, 0x00);
 					master_track(fd, track_buffer, track_density, track, length);
 				}
 				if(((track>70)&&(retries>=3))||(retries>=10))
 				{
-					printf("\n      Write verify FAILED - Odd data or bad media! ");
+					printf("\nWrite verify FAILED - Odd data or bad media!\n");
 					verified=1;
 				}
 			}
+
 		}
 	}
 }
@@ -336,18 +335,18 @@ unformat_disk(CBM_FILE fd)
 	motor_on(fd);
 	set_density(fd, 2);
 
-	printf("Wiping/Unformatting...");
+	printf("Wiping/Unformatting...\n");
 
 	for (track = start_track; track <= end_track; track += 1/*track_inc*/)
 	{
-		if(verbose>1) printf("\n%4.1f:",  (float) track/2);
+		if(verbose) printf("\n%4.1f:",  (float) track/2);
 		for(i=0;i<unformat_passes; i++)
 		{
-			if(verbose>1) printf(".");
+			if(verbose) printf(" [Pass:%d] ",i+1);
 			//if(read_killer) fill_track(fd, track, 0xFF);
 			fill_track(fd, track, 0x00);
 		}
-		if(verbose>1) printf("UNFORMATTED!");
+		if(verbose) printf("UNFORMATTED!");
 	}
 }
 
@@ -367,7 +366,7 @@ void speed_adjust(CBM_FILE fd)
 {
 	int i, cap;
 
-	printf("\nTesting drive motor speed for 100 loops.\n");
+	printf("Testing drive motor speed for 100 loops.\n");
 	printf("--------------------------------------------------\n");
 	printf("Track 41.5 will be destroyed!\n");
 
@@ -378,7 +377,7 @@ void speed_adjust(CBM_FILE fd)
 	for (i=0; i<100; i++)
 	{
 		cap = track_capacity(fd);
-		printf("Speed = %.2frpm\n", DENSITY2 / cap);
+		printf("%d/100 - Speed = %0.2fRPM\n",i+1,(float)DENSITY2 / cap);
 	}
 
 }
@@ -393,9 +392,8 @@ void adjust_target(CBM_FILE fd)
 	int capacity_margin = 0;
 	BYTE track_dens[4] = { 32*2, 27*2, 21*2, 10*2 };
 
-	//printf("\nTesting track capacity at each density\n");
-	//printf("--------------------------------------------------\n");
-	printf("\nTesting track capacity/motor speed\n");
+	printf("Testing track capacity/motor speed\n");
+	printf("----------------------------------\n");
 
 	for (i = 0; i <= 3; i++)
 	{
@@ -409,12 +407,12 @@ void adjust_target(CBM_FILE fd)
 
 		set_bitrate(fd, (BYTE)i);
 
-		if(verbose) printf("%d: ", i);
+		printf("%d: ", i);
 
 		for(j = 0, run_total = 0; j < DENSITY_SAMPLES; j++)
 		{
 			cap[j] = track_capacity(fd);
-			if(verbose) printf("%d ", cap[j]);
+			printf("%d ", cap[j]);
 			run_total += cap[j];
 			if(cap[j] > cap_high[i]) cap_high[i] = cap[j];
 			if(cap[j] < cap_low[i]) cap_low[i] = cap[j];
@@ -428,19 +426,19 @@ void adjust_target(CBM_FILE fd)
 		switch(i)
 		{
 			case 0:
-				if(verbose) printf("(%.2frpm) margin:%d\n", (float)DENSITY0 / capacity[0], cap_margin[i]);
+				printf("(%.2frpm) margin:%d\n", (float)DENSITY0 / capacity[0], cap_margin[i]);
 				break;
 
 			case 1:
-				if(verbose) printf("(%.2frpm) margin:%d\n", (float)DENSITY1 / capacity[1], cap_margin[i]);
+				printf("(%.2frpm) margin:%d\n", (float)DENSITY1 / capacity[1], cap_margin[i]);
 				break;
 
 			case 2:
-				if(verbose) printf("(%.2frpm) margin:%d\n", (float)DENSITY2 / capacity[2], cap_margin[i]);
+				printf("(%.2frpm) margin:%d\n", (float)DENSITY2 / capacity[2], cap_margin[i]);
 				break;
 
 			case 3:
-				if(verbose) printf("(%.2frpm) margin:%d\n", (float)DENSITY3 / capacity[3], cap_margin[i]);
+				printf("(%.2frpm) margin:%d\n", (float)DENSITY3 / capacity[3], cap_margin[i]);
 				break;
 		}
 
@@ -452,7 +450,6 @@ void adjust_target(CBM_FILE fd)
 							+((float)DENSITY1 / (capacity[1] + capacity_margin + extra_capacity_margin))
 							+((float)DENSITY0 / (capacity[0] + capacity_margin + extra_capacity_margin)) ) / 4;
 
-	//printf("--------------------------------------------------\n");
 	printf("Motor speed: ~%.2f RPM.\n", motor_speed);
 	printf("Track capacity margin: %d\n", capacity_margin + extra_capacity_margin);
 
@@ -461,6 +458,7 @@ void adjust_target(CBM_FILE fd)
 		printf("\n\nERROR!\nDrive speed out of range.\nCheck motor, write-protect, or bad media.\n");
 		exit(0);
 	}
+	printf("----------------------------------\n");
 }
 
 void
@@ -469,7 +467,7 @@ init_aligned_disk(CBM_FILE fd)
 	int track;
 
 	/* write all 0x55 */
-	printf("\nWiping/Unformatting...\n");
+	printf("Wiping/Unformatting...\n");
 	for (track = start_track; track <= end_track; track += 1)
 	{
 		// step head

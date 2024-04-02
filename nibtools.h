@@ -5,7 +5,7 @@
  */
 
 #define VERSION "Built "__DATE__" "__TIME__
-#define AUTHOR "(C) Peter Rittwage\nhttp://c64preservation.com\n"
+#define AUTHOR "(C) Peter Rittwage\nhttps://c64preservation.com\n"
 
 #define FL_STEPTO      			0x00
 #define FL_MOTOR       		0x01
@@ -48,7 +48,7 @@
 #define MODE_UNFORMAT_DISK 	2
 #define MODE_WRITE_RAW	   	3
 #define MODE_TEST_ALIGNMENT 4
-#define MODE_SPEED_ADJUST 5
+#define MODE_SPEED_ADJUST 	5
 
 #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
 #define BYTETOBINARY(byte)  \
@@ -106,6 +106,7 @@ extern int sync_align_buffer;
 extern int fattrack;
 extern int old_g64;
 extern int backwards;
+extern int nb2cycle;
 
 #include "ihs.h"
 
@@ -122,7 +123,7 @@ void switchusage(void);
 int load_file(char *filename, BYTE *file_buffer);
 int save_file(char *filename, BYTE *file_buffer, int length);
 int read_nib(BYTE *file_buffer, int file_buffer_size, BYTE *track_buffer, BYTE *track_density, size_t *track_length);
-int read_nb2(char *filename, BYTE *track_buffer, BYTE *track_density, size_t *track_length);
+int read_nb2(char *filename, BYTE *track_buffer, BYTE *track_density, size_t *track_length, size_t cycle);
 int read_g64(char *filename, BYTE *track_buffer, BYTE *track_density, size_t *track_length);
 int read_d64(char *filename, BYTE *track_buffer, BYTE *track_density, size_t *track_length);
 int write_nib(BYTE*file_buffer, BYTE *track_buffer, BYTE *track_density, size_t *track_length);

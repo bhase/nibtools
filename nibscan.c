@@ -66,7 +66,7 @@ int align_delay;
 int cap_min_ignore;
 int increase_sync = 0;
 int presync = 0;
-BYTE fillbyte = 0xfe;
+BYTE fillbyte = 0x55;
 BYTE drive = 8;
 char * cbm_adapter = "";
 int use_floppycode_srq = 0;
@@ -78,6 +78,7 @@ int track_match=0;
 int old_g64=0;
 int read_killer=1;
 int backwards=0;
+int nb2cycle=0;
 
 unsigned char md5_hash_result[16];
 unsigned char md5_dir_hash_result[16];
@@ -104,12 +105,12 @@ main(int argc, char *argv[])
 	reduce_sync = 4;
 	reduce_badgcr = 0;
 	reduce_gap = 0;
-	verbose = 1;
+	verbose = 0;
 	cap_min_ignore = 0;
 
 	fprintf(stdout,
-		"\nnibscan - Commodore disk image scanner / comparator\n"
-		AUTHOR VERSION "\n\n");
+		"nibscan - Commodore disk image scanner / comparator\n"
+		AUTHOR VERSION "\n");
 
 	/* we can do nothing with no switches */
 	if (argc < 2)
@@ -145,68 +146,69 @@ main(int argc, char *argv[])
 		compare_disks();
 
 		/* disk 1 */
-		printf("\n1: %s\n", file1);
+		//if(verbose) printf("1: %s\n", file1);
 
 		crc_dir = crc_dir_track(track_buffer, track_length);
-		printf("BAM/DIR CRC:\t\t\t0x%X\n", crc_dir);
+		if(verbose) printf("BAM/DIR CRC:\t\t\t0x%X\n", crc_dir);
 		crc = crc_all_tracks(track_buffer, track_length);
-		printf("Full CRC:\t\t\t0x%X\n", crc);
+		if(verbose) printf("Full CRC:\t\t\t0x%X\n", crc);
 
-		memset(md5_dir_hash_result, 0 , sizeof(md5_dir_hash_result));
-		md5_dir_track(track_buffer, track_length, md5_dir_hash_result);
-		printf("BAM/DIR MD5:\t\t\t0x");
-		for (i = 0; i < 16; i++)
-		 	printf ("%02x", md5_dir_hash_result[i]);
-		printf("\n");
+		//memset(md5_dir_hash_result, 0 , sizeof(md5_dir_hash_result));
+		//md5_dir_track(track_buffer, track_length, md5_dir_hash_result);
+		//if(verbose) printf("BAM/DIR MD5:\t\t\t0x");
+		//for (i = 0; i < 16; i++)
+		// 	if(verbose) printf ("%02x", md5_dir_hash_result[i]);
+		//if(verbose) printf("\n");
 
-		memset(md5_hash_result, 0 , sizeof(md5_hash_result));
-		md5_all_tracks(track_buffer, track_length, md5_hash_result);
-		printf("Full MD5:\t\t\t0x");
-		for (i = 0; i < 16; i++)
-			printf ("%02x", md5_hash_result[i]);
-		printf("\n");
+		//memset(md5_hash_result, 0 , sizeof(md5_hash_result));
+		//md5_all_tracks(track_buffer, track_length, md5_hash_result);
+		//if(verbose) printf("Full MD5:\t\t\t0x");
+		//for (i = 0; i < 16; i++)
+		//	if(verbose) printf ("%02x", md5_hash_result[i]);
+		//if(verbose) printf("\n");
 
 		/* disk 2 */
-		printf("\n2: %s\n", file2);
+		//if(verbose) printf("2: %s\n", file2);
+
 		crc2_dir = crc_dir_track(track_buffer2, track_length2);
-		printf("BAM/DIR CRC:\t\t\t0x%X\n", crc2_dir);
+		if(verbose) printf("BAM/DIR CRC:\t\t\t0x%X\n", crc2_dir);
 		crc2 = crc_all_tracks(track_buffer2, track_length2);
-		printf("Full CRC:\t\t\t0x%X\n", crc2);
+		if(verbose) printf("Full CRC:\t\t\t0x%X\n", crc2);
 
-		memset(md5_dir_hash_result2, 0 , sizeof(md5_dir_hash_result2));
-		md5_dir_track(track_buffer2, track_length2, md5_dir_hash_result2);
-		printf("BAM/DIR MD5:\t\t\t0x");
-		for (i = 0; i < 16; i++)
-		 	printf ("%02x", md5_dir_hash_result2[i]);
-		printf("\n");
+		//memset(md5_dir_hash_result2, 0 , sizeof(md5_dir_hash_result2));
+		//md5_dir_track(track_buffer2, track_length2, md5_dir_hash_result2);
+		//if(verbose) printf("BAM/DIR MD5:\t\t\t0x");
+		//for (i = 0; i < 16; i++)
+		// 	if(verbose) printf ("%02x", md5_dir_hash_result2[i]);
+		//if(verbose) printf("\n");
 
-		memset(md5_hash_result2, 0 , sizeof(md5_hash_result2));
-		md5_all_tracks(track_buffer2, track_length2, md5_hash_result2);
-		printf("Full MD5:\t\t\t0x");
-		for (i = 0; i < 16; i++)
-			printf ("%02x", md5_hash_result2[i]);
-		printf("\n\n");
+		//memset(md5_hash_result2, 0 , sizeof(md5_hash_result2));
+		//md5_all_tracks(track_buffer2, track_length2, md5_hash_result2);
+		//if(verbose) printf("Full MD5:\t\t\t0x");
+		//for (i = 0; i < 16; i++)
+		//	if(verbose) printf ("%02x", md5_hash_result2[i]);
+		//if(verbose) printf("\n\n");
 
 		/* compare summary */
 		if(crc_dir == crc2_dir)
-			printf("BAM/DIR CRC matches.\n");
+			printf("BAM/DIR CRC matches : 0x%X\n", crc_dir);
 		else
-			printf("BAM/DIR CRC does not match.\n");
+			printf("BAM/DIR CRC does not match! 0x%X != 0x%X\n", crc_dir, crc2_dir);
 
-		if( memcmp(md5_dir_hash_result, md5_dir_hash_result2, 16 ) == 0 )
-			printf("BAM/DIR MD5 matches.\n");
-		else
-			printf("BAM/DIR MD5 does not match.\n");
+		//if( memcmp(md5_dir_hash_result, md5_dir_hash_result2, 16 ) == 0)
+		//	printf("BAM/DIR MD5 matches: 0x%s\n", md5_dir_hash_result);
+		//else
+		//	printf("BAM/DIR MD5 does not match! 0x%s != 0x%s\n", md5_dir_hash_result, md5_dir_hash_result2);
 
 		if(crc == crc2)
-			printf("All decodable sectors have CRC matches.\n");
+			printf("All decodable sectors have CRC matches: 0x%X\n", crc);
 		else
-			printf("All decodable sectors do not have CRC matches.\n");
+			printf("All decodable sectors do not have CRC matches! 0x%X != 0x%X\n", crc, crc2);
 
-		if( memcmp(md5_hash_result, md5_hash_result2, 16 ) == 0 )
-			printf("All decodable sectors have MD5 matches.\n");
-		else
-			printf("All decodable sectors do not have MD5 matches.\n");
+		//if( memcmp(md5_hash_result, md5_hash_result2, 16 ) == 0 )
+		///	printf("All decodable sectors have MD5 matches: 0x%s\n", md5_hash_result);
+		//else
+		//	printf("All decodable sectors do not have MD5 matches! 0x%s != 0x%s\n", md5_hash_result, md5_hash_result2);
 	}
 	else 	// just scan for errors, etc.
 	{
@@ -214,26 +216,26 @@ main(int argc, char *argv[])
 
 		scandisk();
 
-		printf("\n%s\n", file1);
+		printf("%s\n", file1);
 
 		crc = crc_dir_track(track_buffer, track_length);
 		printf("BAM/DIR CRC:\t0x%X\n", crc);
 		crc = crc_all_tracks(track_buffer, track_length);
 		printf("Full CRC:\t0x%X\n", crc);
 
-		memset(md5_hash_result, 0 , sizeof(md5_hash_result));
-		md5_dir_track(track_buffer, track_length, md5_hash_result);
-		printf("BAM/DIR MD5:\t0x");
-		for (i = 0; i < 16; i++)
-		 	printf ("%02x", md5_hash_result[i]);
-		printf("\n");
+		//memset(md5_hash_result, 0 , sizeof(md5_hash_result));
+		//md5_dir_track(track_buffer, track_length, md5_hash_result);
+		//printf("BAM/DIR MD5:\t0x");
+		//for (i = 0; i < 16; i++)
+		// 	printf ("%02x", md5_hash_result[i]);
+		//printf("\n");
 
-		memset(md5_hash_result, 0 , sizeof(md5_hash_result));
-		md5_all_tracks(track_buffer, track_length, md5_hash_result);
-		printf("Full MD5:\t0x");
-		for (i = 0; i < 16; i++)
-			printf ("%02x", md5_hash_result[i]);
-		printf("\n");
+		//memset(md5_hash_result, 0 , sizeof(md5_hash_result));
+		//md5_all_tracks(track_buffer, track_length, md5_hash_result);
+		//printf("Full MD5:\t0x");
+		//for (i = 0; i < 16; i++)
+		//	printf ("%02x", md5_hash_result[i]);
+		//printf("\n");
 	}
 
 	exit(0);
@@ -268,7 +270,7 @@ int load_image(char *filename, BYTE *track_buffer, BYTE *track_density, size_t *
 	}
 	else if (compare_extension(filename, "NB2"))
 	{
-		if(!(read_nb2(filename, track_buffer, track_density, track_length))) return 0;
+		if(!(read_nb2(filename, track_buffer, track_density, track_length, nb2cycle))) return 0;
 		align_tracks(track_buffer, track_density, track_length, track_alignment);
 		if(fattrack!=99) search_fat_tracks(track_buffer, track_density, track_length);
 	}
@@ -324,7 +326,7 @@ compare_disks(void)
 	extract_cosmetic_id(track_buffer2 + (36 * NIB_TRACK_LENGTH), cid2);
 
 	if(waitkey) getchar();
-	printf("\nComparing...\n");
+	printf("Comparing...\n");
 
 	for (track = start_track; track <= end_track; track ++)
 	{
@@ -342,15 +344,15 @@ compare_disks(void)
 			continue;
 		}
 
-		printf("%4.1f, Disk 1: (%d) %d\n",
+		if(verbose) printf("%4.1f, Disk 1: (%d) %d\n",
 		 	(float)track/2, track_density[track]&3, track_length[track]);
 
-		printf("%4.1f, Disk 2: (%d) %d\n",
+		if(verbose) printf("%4.1f, Disk 2: (%d) %d\n",
 		 	(float)track/2, track_density2[track]&3, track_length2[track]);
 
 		numtracks++;
 
-		// check for gcr match (unlikely)
+		// check for raw gcr match
 		gcr_match =
 		  compare_tracks(
 			track_buffer + (track * NIB_TRACK_LENGTH),
@@ -360,7 +362,7 @@ compare_disks(void)
 			0,
 			errorstring);
 
-		printf("%s", errorstring);
+		if(verbose) printf("%s", errorstring);
 
 		if(gcr_match)
 		{
@@ -369,13 +371,13 @@ compare_disks(void)
 			if (gcr_percentage >= 98)
 			{
 				gcr_total++;
-				printf("\n[*>%d%% GCR MATCH*]\n", (gcr_match*100)/track_length[track]);
+				if(verbose) printf("\n[%d%% GCR MATCH]\n", gcr_percentage);
 				sprintf(tmpstr, "%d,", track/2);
 				strcat(gcr_matches, tmpstr);
 			}
 			else
 			{
-				printf("\n[*>%d%% GCR MATCH*]\n", (gcr_match*100)/track_length[track]);
+				if(verbose) printf("\n[%d%% GCR MATCH]\n", gcr_percentage);
 				sprintf(tmpstr, "%d,", track/2);
 				strcat(gcr_mismatches, tmpstr);
 			}
@@ -403,54 +405,58 @@ compare_disks(void)
 
 			printf("%s", errorstring);
 
-			sec_total += sec_match;
 			numsecs += sector_map[track/2];
 
-			if (sec_match == sector_map[track/2])
+			//if(!errorstring)
 			{
-				trk_total++;
-				printf("[*Data MATCH*]\n");
-				sprintf(tmpstr, "%d,", track / 2);
-				strcat(sec_matches, tmpstr);
-			}
-			else
-			{
-				printf("[*Data MISmatch*]\n");
-				sprintf(tmpstr, "%d,", track / 2);
-				strcat(sec_mismatches, tmpstr);
+				sec_total += sec_match;
+
+				if (sec_match == sector_map[track/2])
+				{
+					trk_total++;
+					if(verbose) printf("[*Data MATCH*]\n");
+					sprintf(tmpstr, "%d,", track / 2);
+					strcat(sec_matches, tmpstr);
+				}
+				else
+				{
+					if(verbose) printf("[*Data MISmatch*]\n");
+					sprintf(tmpstr, "%d,", track / 2);
+					strcat(sec_mismatches, tmpstr);
+				}
 			}
 		}
 
 		if(track_density[track] != track_density2[track])
 		{
-			printf("[Densities do not match: %d != %d]\n", track_density[track], track_density2[track]);
+			printf("[Track %d densities do not match: %d != %d]\n", track/2, track_density[track], track_density2[track]);
 			dens_mismatch++;
 			sprintf(tmpstr, "%d,", track / 2);
 			strcat(dens_mismatches, tmpstr);
 		}
-		printf("\n");
+		if(verbose) printf("\n");
 
 		if((!sec_match) || (track_density[track] != track_density2[track]))
 			if( waitkey) getchar();
 	}
 
-	printf("\n---------------------------------------------------------------------\n");
+	printf("---------------------------------------------------------------------\n");
 	printf("%d/%d tracks had at least 98%% GCR match\n", gcr_total, numtracks);
 	//printf("Matches (%s)\n", gcr_matches);
 	//printf("Mismatches (%s)\n", gcr_mismatches);
 	//printf("\n");
-	printf("%d/%d of likely formatted tracks matched all sector data\n", trk_total, numtracks);
+	//printf("%d/%d tracks matched all DOS sector data\n", trk_total, numtracks);
 	//printf("Matches (%s)\n", sec_matches);
 	//printf("Mismatches (%s)\n", sec_mismatches);
 	//printf("\n");
-	printf("%d/%d total sectors (or errors) matched (%d mismatched)\n", sec_total, numsecs, numsecs-sec_total);
+	printf("%d/%d total DOS sectors matched (%d mismatched)\n", sec_total, numsecs, numsecs-sec_total);
 	printf("CBM DOS errors (d1/%d - d2/%d)\n",errors_d1, errors_d2);
 	printf("%d tracks had mismatched densities (%s)\n", dens_mismatch, dens_mismatches);
 
 	if(!(id[0]==id2[0] && id[1]==id2[1]))
-		printf("\nFormat ID's do not match!:\t(%s != %s)", id, id2);
+		printf("Format ID's do not match!:\t(%s != %s)", id, id2);
 	else
-		printf("\nFormat ID's match:\t\t(%s = %s)", id, id2);
+		printf("Format ID's match:\t\t(%s = %s)", id, id2);
 
 	if(!(cid[0]==cid2[0] && cid[1]==cid2[1]))
 		printf("\nCosmetic ID's do not match:\t(%s != %s)\n", cid, cid2);
@@ -485,17 +491,17 @@ scandisk(void)
 	memset(rapidlok_tracks, 0, sizeof(rapidlok_tracks));
 	errorstring[0] = '\0';
 
-	printf("\nScanning...\n");
+	printf("Scanning...\n");
 
 	// extract disk id from track 18
 	memset(id, 0, 3);
 	extract_id(track_buffer + (36 * NIB_TRACK_LENGTH), id);
-	printf("\ndisk id: %s\n", id);
+	printf("Header Disk ID: %s\n", id);
 
 	// collect and print "cosmetic" disk id for comparison
 	memset(cosmetic_id, 0, 3);
 	extract_cosmetic_id(track_buffer + (36 * NIB_TRACK_LENGTH), cosmetic_id);
-	printf("cosmetic disk id: %s\n", cosmetic_id);
+	printf("Cosmetic Disk ID: %s\n", cosmetic_id);
 
 	if(waitkey) getchar();
 
@@ -504,7 +510,7 @@ scandisk(void)
 	{
 		if(!check_formatted(track_buffer + (track * NIB_TRACK_LENGTH), track_length[track]))
 		{
-			//printf(":UNFORMATTED\n");
+			//printf(":UNFORMATTED");
 			continue;
 		}
 		else
@@ -599,7 +605,7 @@ scandisk(void)
 				if(verbose>1) printf(" %s", errorstring);
 			}
 
-			if (verbose>1)
+			if (verbose>2)
 			{
 					dump_headers(track_buffer + (NIB_TRACK_LENGTH * track), track_length[track]);
 					raw_track_info(track_buffer + (NIB_TRACK_LENGTH * track), track_length[track]);
@@ -614,7 +620,6 @@ scandisk(void)
 
 		// process and dump to disk for manual compare
 		//track_length[track] = compress_halftrack(track, track_buffer + (track * NIB_TRACK_LENGTH), track_density[track], track_length[track]);
-
 		sprintf(testfilename, "raw/tr%.1fd%d", (float) track/2, (track_density[track] & 3));
 		if(NULL != (trkout = fopen(testfilename, "w")))
 		{
@@ -622,7 +627,7 @@ scandisk(void)
 			fclose(trkout);
 		}
 	}
-	printf("\n---------------------------------------------------------------------\n");
+	printf("---------------------------------------------------------------------\n");
 	printf("%d unrecognized sectors (CBM disk errors) detected\n", errors);
 	printf("%d known empty sectors detected\n", empty);
 	printf("%d bad GCR bytes detected\n", totalgcr);
@@ -758,12 +763,12 @@ raw_track_info(BYTE * gcrdata, size_t length)
 
 size_t check_fat(int track)
 {
-	size_t diff = 0;
+	size_t match = 0;
 	char errorstring[0x1000];
 
 	if (track_length[track] > 0 && track_length[track+2] > 0 && track_length[track] != 8192 && track_length[track+2] != 8192)
 	{
-		diff = compare_tracks(
+		match = compare_tracks(
 		  track_buffer + (track * NIB_TRACK_LENGTH),
 		  track_buffer + ((track+2) * NIB_TRACK_LENGTH),
 		  track_length[track],
@@ -771,18 +776,20 @@ size_t check_fat(int track)
 
 		if(verbose>1) printf("%s",errorstring);
 
-		if (diff<=10)
+		if (track_length[track]-match<=10)
 		{
-			printf("*FAT diff=%d*",(int)diff);
+			printf("*FAT diff=%d*",track_length[track]-match);
 			return 1;
 		}
-		else if (diff<34) /* 34 happens on empty formatted disks */
+		else if ((track_length[track]-match<=30) /* 32-34 happens on empty formatted disks */
+				||
+				((track>=70)&&(track_length[track]-match<=40)) ) /* much more likely on track 34+ */
 		{
-			printf("*Possible FAT diff=%d*",(int)diff);
+			printf("*Possible FAT diff=%d*",(int)track_length[track]-match);
 			return 1;
 		}
 		else
-			if(verbose>1) printf("diff=%d",(int)diff);
+			if(verbose>1) printf("(diff=%d)",(int)track_length[track]-match);
 	}
 	return 0;
 }

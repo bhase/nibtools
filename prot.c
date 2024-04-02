@@ -15,42 +15,45 @@ extern int fattrack;
 void search_fat_tracks(BYTE *track_buffer, BYTE *track_density, size_t *track_length)
 {
 	int track, numfats=0;
-	size_t diff=0;
+	size_t match=0;
 	char errorstring[0x1000];
 
 	if(!fattrack) /* autodetect fat tracks */
 	{
-		//printf("Searching for fat tracks...\n");
+		if(verbose) printf("Searching for fat tracks...\n");
 		for (track=2; track<=MAX_HALFTRACKS_1541-1; track+=2)
 		{
 			if (track_length[track] > 0 && track_length[track+2] > 0 &&
 				track_length[track] != 8192 && track_length[track+2] != 8192)
 			{
-				diff = compare_tracks(
+				match = compare_tracks(
 				  track_buffer + (track * NIB_TRACK_LENGTH),
 				  track_buffer + ((track+2) * NIB_TRACK_LENGTH),
 				  track_length[track],
 				  track_length[track+2], 1, errorstring);
 
-				if(verbose>1) printf("%4.1f: %d\n",(float)track/2,diff);
+				if(verbose>1) printf("%4.1f: %d\n",(float)track/2,match);
 
-				if (diff<2) /* 34 happens on empty formatted disks */
+				if ((track_length[track]-match<=20) /* 32-34 happens on empty formatted disks */
+					||
+					((track>=70)&&(track_length[track]-match<=40)) ) /* much more likely on track 35 */
 				{
-					printf("Likely fat track found on T%d/%d (diff=%d)\n",track/2,(track/2)+1,(int)diff);
-
-					memcpy(track_buffer + ((track+1) * NIB_TRACK_LENGTH),
-						track_buffer + (track * NIB_TRACK_LENGTH),
-						NIB_TRACK_LENGTH);
-
-					track_length[track+1] = track_length[track];
-					track_density[track+1] = track_density[track];
+					printf("Likely fat track found on T%d/%d (diff=%d)\n",track/2,(track/2)+1,(int)track_length[track]-match);
 
 					if(!numfats)
+					{
 						fattrack=track;
+						memcpy(track_buffer + ((track+1) * NIB_TRACK_LENGTH),
+												track_buffer + (track * NIB_TRACK_LENGTH),
+												NIB_TRACK_LENGTH);
+
+						track_length[track+1] = track_length[track];
+						track_density[track+1] = track_density[track];
+					}
 					else
 					{
 						printf("These are likely not fat tracks, just repeat data - Ignoring\n");
-						//fattrack=0;
+						fattrack=0;
 					}
 					numfats++;
 				}
@@ -67,12 +70,21 @@ void search_fat_tracks(BYTE *track_buffer, BYTE *track_density, size_t *track_le
 
 		track_length[fattrack+1] = track_length[fattrack];
 		track_density[fattrack+1] = track_density[fattrack];
+
+		memcpy(track_buffer + ((fattrack+2) * NIB_TRACK_LENGTH),
+			track_buffer + (fattrack * NIB_TRACK_LENGTH),
+			NIB_TRACK_LENGTH);
+
+		track_length[fattrack+2] = track_length[fattrack];
+		track_density[fattrack+2] = track_density[fattrack];
 	}
 }
 
 /* this routine tries to "fix" non-sync aligned images created from RAW Kryoflux stream files */
 /* PROBLEM: This simple implementation can miss sync like 01111111 11111110 which is 14 bits and valid... */
-/* PROBLEM: Many KF G64s begin the track in the middle of a sector, and is missed by this routine also */
+/* PROBLEM: Some/many non-syncaligned G64s begin the track in the middle of a sector, and is missed by this routine also */
+/* PROBLEM: This destroys sync lengths and possibly any data that is non-standard. */
+
 size_t sync_align(BYTE *buffer, int length)
 {
     int i, j;
@@ -294,7 +306,7 @@ align_pirateslayer(BYTE * work_buffer, size_t tracklen)
 			}
 			pos++;
 		}
-		printf(">>%d", shift+1);
+		//printf(">>%d", shift+1);
 		shift_buffer_right(work_buffer, tracklen, 1);
 	}
 
@@ -782,10 +794,10 @@ auto_gap(BYTE * work_buffer, size_t tracklen)
 	}
 
 	/* last 5 bytes of gap */
-	// printf("gapbyte: %x, len: %d\n",gapbyte,longest);
-	//if(key >= work_buffer + 5)
-	//	return(key - 5);
-	//else
+	//printf("gapbyte: %x, len: %d\n",gapbyte,longest);
+	if(key >= work_buffer + 5)
+		return(key - 5);
+	else
 	return key;
 }
 

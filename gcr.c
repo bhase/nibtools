@@ -68,21 +68,21 @@ BYTE reduce_map[MAX_TRACKS_1541 + 1] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/*  1 - 10 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 11 - 20 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 21 - 30 */
-	0, 0, 0, 0, 0, 0,					/* 31 - 35 */
-	0,	0, 0, 0, 0, 0						/* 37 - 42  */
+	0, 0, 0, 0, 0, 0,				/* 31 - 35 */
+	0,	0, 0, 0, 0, 0				/* 37 - 42  */
 };
 
 char alignments[][20] = { "NONE", "GAP", "SEC0", "SYNC", "BADGCR", "VMAX", "AUTO", "VMAX-CW", "RAW", "PIRATESLAYER", "RAPIDLOK"};
 
 /* Burst Nibbler defaults
 size_t capacity_min[] = 		{ 6183, 6598, 7073, 7616 };
-size_t capacity[] = 				{ 6231, 6646, 7121, 7664 };
+size_t capacity[] = 			{ 6231, 6646, 7121, 7664 };
 size_t capacity_max[] = 		{ 6311, 6726, 7201, 7824 };
 */
 
 /* New calculated defaults */
-size_t capacity_min[] =		{ (int) (DENSITY0 / 305), (int) (DENSITY1 / 305), (int) (DENSITY2 / 305), (int) (DENSITY3 / 305) };
-size_t capacity[] = 			{ (int) (DENSITY0 / 300), (int) (DENSITY1 / 300), (int) (DENSITY2 / 300), (int) (DENSITY3 / 300) };
+size_t capacity_min[] =	{ (int) (DENSITY0 / 305), (int) (DENSITY1 / 305), (int) (DENSITY2 / 305), (int) (DENSITY3 / 305) };
+size_t capacity[] = 	{ (int) (DENSITY0 / 300), (int) (DENSITY1 / 300), (int) (DENSITY2 / 300), (int) (DENSITY3 / 300) };
 size_t capacity_max[] =	{ (int) (DENSITY0 / 295), (int) (DENSITY1 / 295), (int) (DENSITY2 / 295), (int) (DENSITY3 / 295) };
 
 /* Nibble-to-GCR conversion table */
@@ -718,9 +718,9 @@ find_sector0(BYTE * work_buffer, size_t tracklen, size_t * p_sectorlen)
 	while (pos >= work_buffer + tracklen)
 		pos -= tracklen;
 
-	if(*(pos-1)&1)
-		return pos - 1;  // go to  last byte that contains first few bits of sync
-	else
+	//if(*(pos-1)&1)
+	//	return pos - 1;  // go to  last byte that contains first few bits of sync
+	//else
 		return pos; // return at first full byte of sync
 }
 
@@ -778,9 +778,9 @@ find_sector_gap(BYTE * work_buffer, size_t tracklen, size_t * p_sectorlen)
 	while (pos >= work_buffer + tracklen)
 		pos -= tracklen;
 
-	if(*(pos-1)&1)
-		return pos - 1;  // go to  last byte that contains first few bits of sync
-	else
+	//if(*(pos-1)&1)
+	//	return pos - 1;  // go to  last byte that contains first few bits of sync
+	//else
 		return pos; // return at first full byte of sync
 }
 
@@ -858,14 +858,14 @@ extract_GCR_track(BYTE *destination, BYTE *source, BYTE *align, int track, size_
 	memcpy(work_buffer, cycle_start, NIB_TRACK_LENGTH);
 
 	/* find cycle */
-	if(verbose>1) printf("H");
+	if(verbose>1) printf("[H");
 	find_track_cycle_headers(&cycle_start, &cycle_stop, cap_min, cap_max);
 	track_len = cycle_stop - cycle_start;
 
 	/* second pass to find a cycle in track w/non-standard headers */
 	if ((track_len > cap_max) || (track_len < cap_min))
 	{
-		if(verbose>1) printf("/S");
+		if(verbose>1) printf("/S] ");
 		find_track_cycle_syncs(&cycle_start, &cycle_stop, cap_min, cap_max);
 		track_len = cycle_stop - cycle_start;
 	}
@@ -873,7 +873,7 @@ extract_GCR_track(BYTE *destination, BYTE *source, BYTE *align, int track, size_
 	/* third pass to find a cycle in track w/non-standard headers */
 	if ((track_len > cap_max) || (track_len < cap_min))
 	{
-		if(verbose>1) printf("/R");
+		if(verbose>1) printf("/R] ");
 		find_track_cycle_raw(&cycle_start, &cycle_stop, cap_min, cap_max);
 		track_len = cycle_stop - cycle_start;
 	}
@@ -1008,7 +1008,7 @@ extract_GCR_track(BYTE *destination, BYTE *source, BYTE *align, int track, size_
 	sector0_pos = find_sector0(work_buffer, track_len, &sector0_len);
 	sectorgap_pos = find_sector_gap(work_buffer, track_len, &sectorgap_len);
 
-	if(verbose>1)
+	if(verbose>2)
 		printf("{gap=%.4d;len=%d) ", (int)(sectorgap_pos-work_buffer), (int)sectorgap_len);
 
 	if((sectorgap_pos-work_buffer == sector0_pos-work_buffer) &&
@@ -1076,7 +1076,7 @@ aligned:
 			}
 			else j++;
 		}
-		printf("}");
+		printf("} ");
 	}
 	return track_len;
 }
@@ -1370,6 +1370,7 @@ compare_tracks(BYTE *track1, BYTE *track2, size_t length1, size_t length2, int s
 				k--;
 				continue;
 			}
+
 			if (is_bad_gcr(track2, length2, k))
 			{
 				//badgcr_diff++;
@@ -1448,8 +1449,8 @@ compare_tracks(BYTE *track1, BYTE *track2, size_t length1, size_t length2, int s
 		strcat(outputstring, tmpstr);
 	}
 
-	//return byte_match + sync_diff + presync_diff + shift_diff + gap_diff + badgcr_diff;
-	return byte_diff;
+	return byte_match + sync_diff + presync_diff + shift_diff + gap_diff + badgcr_diff;
+	//return byte_diff;
 }
 
 size_t
@@ -1457,7 +1458,7 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 {
 	int sec_match, numsecs;
 	int sector, error1, error2, empty;
-	int i, j, k;
+	int i, j, k, diff;
 	BYTE checksum1, checksum2;
 	BYTE secbuf1[260], secbuf2[260];
 	char tmpstr[256];
@@ -1510,13 +1511,13 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 			if(error1 == SECTOR_OK)
 			{
 				/*sprintf(tmpstr,"S%d: sector data match\n",sector);*/
+				sec_match++;
 			}
 			else
 			{
-				sprintf(tmpstr,"T%.1fS%d: Non-CBM (%.2x/E%d)(%.2x/E%d)\n",
+				if(verbose) sprintf(tmpstr,"T%.1fS%d: Non-CBM (%.2x/E%d)(%.2x/E%d)\n",
 					(float)track/2,sector,checksum1,error1,checksum2,error2);
 			}
-			sec_match++;
 		}
 		else
 		{
@@ -1530,7 +1531,7 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 
 				printf("T%.1fS%d converted from GCR:\n", (float)track/2, sector);
 
-				/* this prints out sectir contents, which is not always terminal compatible */
+				/* this prints out sector contents, which is not always terminal compatible */
 				for (i=0; i<256; i+=16)
 				{
 					printf("($%.2x) 1:", i);
@@ -1549,8 +1550,10 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 					printf("\n($%.2x) 2:", i);
 
 					for(k=0; k<16; k++)
+					{
 						printf("%.2x ", secbuf2[i+k]);
-
+						if(secbuf2[i+k]!=secbuf1[i+k]) diff=1;
+					}
 					for(k=0; k<16; k++)
 					{
 						if(secbuf2[i+k] >= 32)
@@ -1558,6 +1561,7 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 						else
 							printf("%c", secbuf2[i+k]+32);
 					}
+					if(diff) { printf(" DIFF"); diff=0; }
 					printf("\n");
 				}
 
@@ -1575,7 +1579,6 @@ compare_sectors(BYTE * track1, BYTE * track2, size_t length1, size_t length2, BY
 		}
 		strcat(outputstring, tmpstr);
 	}
-
 	return sec_match;
 }
 
@@ -1728,18 +1731,21 @@ check_bad_gcr(BYTE * gcrdata, size_t length)
 	/* state machine definitions */
 	enum ebadgcr { S_BADGCR_OK, S_BADGCR_ONCE_BAD, S_BADGCR_LOST };
 	enum ebadgcr sbadgcr;
-	size_t i, lastpos;
+	size_t i, j, lastpos;
 	size_t total, b_badgcr;
 	size_t n_badgcr;
+	size_t firstbad, lastbad;
+	BYTE origdata[0x2000];
 
 	/* if empty we are all "bad" GCR */
 	if(!length)
 		return NIB_TRACK_LENGTH;
 
-	i = 0;
 	total = 0;
 	lastpos = 0;
+	firstbad = lastbad = 0;
 	sbadgcr = S_BADGCR_OK;
+	memcpy(origdata,gcrdata,length);
 
 	for (i = 0; i < length - 1; i++)
 	{
@@ -1759,7 +1765,28 @@ check_bad_gcr(BYTE * gcrdata, size_t length)
 						gcrdata[lastpos] = 0x00;
 					}
 					else
+					{
 						sbadgcr = S_BADGCR_ONCE_BAD;
+					}
+
+					if(!firstbad) firstbad=lastpos;
+				}
+				else
+				{
+					if((firstbad) && (verbose>1))
+					{
+						if(memcmp(origdata+firstbad,gcrdata+firstbad,i-firstbad))
+						{
+							printf("badgcr(%x-%x):[",firstbad,i);
+							for(j=firstbad;j<i;j++)
+								printf("%x:",origdata[j]);
+							printf("]=[");
+							for(j=firstbad;j<i;j++)
+								printf("%x:",gcrdata[j]);
+							printf("]\n");
+						}
+						firstbad = 0;
+					}
 				}
 				break;
 
@@ -1770,9 +1797,13 @@ check_bad_gcr(BYTE * gcrdata, size_t length)
 					sbadgcr = S_BADGCR_LOST;
 
 					if(fix_gcr > 1)
+					{
 						fix_first_gcr(gcrdata, length, lastpos);
+					}
 					else if (fix_gcr > 2)
+					{
 						gcrdata[lastpos] = 0x00;
+					}
 				}
 				else
 					sbadgcr = S_BADGCR_OK;
@@ -1784,16 +1815,22 @@ check_bad_gcr(BYTE * gcrdata, size_t length)
 					total++;
 
 					if (fix_gcr)
+					{
 						gcrdata[lastpos] = 0x00;
+					}
 				}
 				else
 				{
 					sbadgcr = S_BADGCR_OK;
 
 					if(fix_gcr > 1)
+					{
 						fix_last_gcr(gcrdata, length, lastpos);
+					}
 					else if(fix_gcr > 2)
+					{
 						gcrdata[lastpos] = 0x00;
+					}
 				}
 				break;
 		}

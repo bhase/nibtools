@@ -141,7 +141,7 @@ BYTE paranoia_read_halftrack(CBM_FILE fd, int halftrack, BYTE * buffer)
 	BYTE bbuffer[NIB_TRACK_LENGTH];
 	BYTE *cbufn, *cbufo, *bufn, *bufo;
 	BYTE align;
-	size_t leno, lenn, gcr_diff;
+	size_t leno, lenn, gcr_comp;
 	BYTE denso, densn;
 	size_t i, l, badgcr, retries, errors, best;
 	char errorstring[0x1000];
@@ -244,10 +244,10 @@ BYTE paranoia_read_halftrack(CBM_FILE fd, int halftrack, BYTE * buffer)
 			break;
 
 		// all bad sectors (protection) and no cycle, we limit retries
-		if ((errors == sector_map[halftrack/2]) && (leno == NIB_TRACK_LENGTH))
-		{
-			if(l < (error_retries - 1))	l = error_retries - 1;
-		}
+		//if ((errors == sector_map[halftrack/2]) && (leno == NIB_TRACK_LENGTH))
+		//{
+		//	if(l < (error_retries - 1))	l = error_retries - 1;
+		//}
 	}
 
 	/* keep best cycle if ended with none */
@@ -260,7 +260,7 @@ BYTE paranoia_read_halftrack(CBM_FILE fd, int halftrack, BYTE * buffer)
 	// Fix bad GCR in track for compare
 	if ((badgcr = check_bad_gcr(cbufo, leno)) != 0)
 	{
-		printf(" (weakgcr:%d) ", badgcr);
+		if(verbose) printf(" (weakgcr:%d) ", badgcr);
 		fprintf(fplog, " (weakgcr:%d) ", badgcr);
 	}
 
@@ -291,10 +291,10 @@ BYTE paranoia_read_halftrack(CBM_FILE fd, int halftrack, BYTE * buffer)
 			}
 
 			// compare raw gcr data
-			gcr_diff = compare_tracks(cbufo, cbufn, leno, lenn, 1, errorstring);
-			if(verbose) printf("VERIFY: diff:%.4d ", (int)gcr_diff);
-			fprintf(fplog, "VERIFY: diff:%.4d ", (int)gcr_diff);
-			if(gcr_diff <= 10)
+			gcr_comp = compare_tracks(cbufo, cbufn, leno, lenn, 1, errorstring);
+			printf("[VERIFY] (%.4d/%.4d) ",(int)gcr_comp,leno);
+			fprintf(fplog, "[VERIFY] match:%.4d ", (int)gcr_comp);
+			if(gcr_comp <= lenn-10)
 			{
 				if(verbose) printf("OK ");
 				break;
@@ -317,7 +317,6 @@ BYTE paranoia_read_halftrack(CBM_FILE fd, int halftrack, BYTE * buffer)
 		}
 	}
 
-	//printf("\n");
 	fprintf(fplog, "%s (%d)", errorstring, leno);
 	memcpy(buffer, bufo, NIB_TRACK_LENGTH);
 	return denso;
@@ -330,7 +329,6 @@ read_floppy(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
     //size_t errors = 0;
     //char errorstring[0x1000];
 
-	printf("\n");
 	fprintf(fplog,"\n");
 
 	if(!rawmode) get_disk_id(fd);
@@ -340,6 +338,7 @@ read_floppy(CBM_FILE fd, BYTE *track_buffer, BYTE *track_density, size_t *track_
 		track_density[track] = paranoia_read_halftrack(fd, track, track_buffer + (track * NIB_TRACK_LENGTH));
 
 	step_to_halftrack(fd, 18*2);
+	printf("\n");
 	return 1;
 }
 
